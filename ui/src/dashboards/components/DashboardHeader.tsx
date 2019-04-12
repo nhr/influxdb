@@ -24,14 +24,16 @@ import {
 import * as AppActions from 'src/types/actions/app'
 import * as QueriesModels from 'src/types/queries'
 import {Dashboard} from '@influxdata/influx'
+import {AutoRefresh, AutoRefreshStatus} from 'src/types'
 
 interface Props {
   activeDashboard: string
   dashboard: Dashboard
   timeRange: QueriesModels.TimeRange
-  autoRefresh: number
+  autoRefresh: AutoRefresh
   handleChooseTimeRange: (timeRange: QueriesModels.TimeRange) => void
-  handleChooseAutoRefresh: AppActions.SetAutoRefreshActionCreator
+  handleChooseAutoRefresh: (autoRefreshInterval: number) => void
+  onSetAutoRefreshStatus: (status: AutoRefreshStatus) => void
   onManualRefresh: () => void
   handleClickPresentationButton: AppActions.DelayEnablePresentationModeDispatcher
   onAddCell: () => void
@@ -55,8 +57,6 @@ export default class DashboardHeader extends Component<Props> {
     const {
       handleChooseAutoRefresh,
       onManualRefresh,
-      autoRefresh,
-      handleChooseTimeRange,
       timeRange: {upper, lower},
       zoomedTimeRange: {upper: zoomedUpper, lower: zoomedLower},
       isHidden,
@@ -65,6 +65,7 @@ export default class DashboardHeader extends Component<Props> {
       onAddCell,
       onRenameDashboard,
       activeDashboard,
+      autoRefresh,
     } = this.props
 
     return (
@@ -97,7 +98,7 @@ export default class DashboardHeader extends Component<Props> {
             selected={autoRefresh}
           />
           <TimeRangeDropdown
-            onSetTimeRange={this.handleSelectTimeRange}
+            onSetTimeRange={this.handleChooseTimeRange}
             timeRange={{
               upper: zoomedUpper || upper,
               lower: zoomedLower || lower,
@@ -131,20 +132,16 @@ export default class DashboardHeader extends Component<Props> {
     this.props.handleClickPresentationButton()
   }
 
-  private handleSelectTimeRange = (
+  private handleChooseTimeRange = (
     timeRange: QueriesModels.TimeRange,
     absoluteTimeRange?: boolean
-  ): void => {
-    const {
-      handleChooseAutoRefresh,
-      handleChooseTimeRange,
-      autoRefresh,
-    } = this.props
-
-    if (absoluteTimeRange && autoRefresh) {
-      handleChooseAutoRefresh(0)
+  ) => {
+    if (absoluteTimeRange) {
+      this.props.onSetAutoRefreshStatus(AutoRefreshStatus.Disabled)
+    } else if (this.props.autoRefresh.status === AutoRefreshStatus.Disabled) {
+      this.props.handleChooseAutoRefresh(this.props.autoRefresh.interval)
     }
 
-    handleChooseTimeRange(timeRange)
+    this.props.handleChooseTimeRange(timeRange)
   }
 }

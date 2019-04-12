@@ -6,14 +6,14 @@ import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar
 import DashboardEmpty from 'src/dashboards/components/dashboard_empty/DashboardEmpty'
 
 import {Dashboard, Cell} from 'src/types'
-import {TimeRange} from 'src/types'
+import {TimeRange, AutoRefresh} from 'src/types'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   dashboard: Dashboard
   timeRange: TimeRange
-  autoRefresh: number
+  autoRefresh: AutoRefresh
   manualRefresh: number
   inPresentationMode: boolean
   inView: (cell: Cell) => boolean
@@ -34,7 +34,6 @@ class DashboardComponent extends PureComponent<Props> {
       onZoom,
       dashboard,
       timeRange,
-      autoRefresh,
       manualRefresh,
       onDeleteCell,
       onCloneCell,
@@ -58,7 +57,6 @@ class DashboardComponent extends PureComponent<Props> {
             <Cells
               onZoom={onZoom}
               timeRange={timeRange}
-              autoRefresh={autoRefresh}
               manualRefresh={manualRefresh}
               cells={dashboard.cells}
               onCloneCell={onCloneCell}

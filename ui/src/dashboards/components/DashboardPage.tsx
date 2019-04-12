@@ -19,17 +19,33 @@ import * as rangesActions from 'src/dashboards/actions/ranges'
 import * as appActions from 'src/shared/actions/app'
 import * as notifyActions from 'src/shared/actions/notifications'
 import {setActiveTimeMachine} from 'src/timeMachine/actions'
+import {
+  setAutoRefreshInterval,
+  setAutoRefreshStatus,
+} from 'src/shared/actions/autoRefresh'
 
 // Utils
 import {getDeep} from 'src/utils/wrappers'
 import {GlobalAutoRefresher} from 'src/utils/AutoRefresher'
 
 // Constants
-import {DASHBOARD_LAYOUT_ROW_HEIGHT} from 'src/shared/constants'
+import {
+  DASHBOARD_LAYOUT_ROW_HEIGHT,
+  AUTOREFRESH_DEFAULT,
+} from 'src/shared/constants'
 import {DEFAULT_TIME_RANGE} from 'src/shared/constants/timeRanges'
 
 // Types
-import {Links, Dashboard, Cell, View, TimeRange, AppState} from 'src/types'
+import {
+  Links,
+  Dashboard,
+  Cell,
+  View,
+  TimeRange,
+  AppState,
+  AutoRefresh,
+  AutoRefreshStatus,
+} from 'src/types'
 import {RemoteDataState} from 'src/types'
 import {WithRouterProps} from 'react-router'
 import {ManualRefreshProps} from 'src/shared/components/ManualRefresh'
@@ -44,7 +60,7 @@ interface StateProps {
   zoomedTimeRange: TimeRange
   timeRange: TimeRange
   dashboard: Dashboard
-  autoRefresh: number
+  autoRefresh: AutoRefresh
   inPresentationMode: boolean
   showVariablesControls: boolean
   views: {[cellID: string]: {view: View; status: RemoteDataState}}
@@ -59,7 +75,8 @@ interface DispatchProps {
   updateQueryParams: typeof rangesActions.updateQueryParams
   setDashTimeV1: typeof rangesActions.setDashTimeV1
   setZoomedTimeRange: typeof rangesActions.setZoomedTimeRange
-  handleChooseAutoRefresh: AppActions.SetAutoRefreshActionCreator
+  handleChooseAutoRefresh: typeof setAutoRefreshInterval
+  onSetAutoRefreshStatus: typeof setAutoRefreshStatus
   handleClickPresentationButton: AppActions.DelayEnablePresentationModeDispatcher
   notify: NotificationsActions.PublishNotificationActionCreator
   onCreateCellWithView: typeof dashboardActions.createCellWithView
@@ -108,7 +125,7 @@ class DashboardPage extends Component<Props, State> {
   public async componentDidMount() {
     const {autoRefresh} = this.props
 
-    GlobalAutoRefresher.poll(autoRefresh)
+    GlobalAutoRefresher.poll(autoRefresh.interval)
 
     window.addEventListener('resize', this.handleWindowResize, true)
 
@@ -126,7 +143,7 @@ class DashboardPage extends Component<Props, State> {
     }
 
     if (autoRefresh !== prevProps.autoRefresh) {
-      GlobalAutoRefresher.poll(autoRefresh)
+      GlobalAutoRefresher.poll(autoRefresh.interval)
     }
   }
 
@@ -146,7 +163,6 @@ class DashboardPage extends Component<Props, State> {
       onManualRefresh,
       inPresentationMode,
       showVariablesControls,
-      handleChooseAutoRefresh,
       handleClickPresentationButton,
       onToggleShowVariablesControls,
       children,
@@ -166,7 +182,8 @@ class DashboardPage extends Component<Props, State> {
             zoomedTimeRange={zoomedTimeRange}
             onRenameDashboard={this.handleRenameDashboard}
             activeDashboard={dashboard ? dashboard.name : ''}
-            handleChooseAutoRefresh={handleChooseAutoRefresh}
+            handleChooseAutoRefresh={this.handleChooseAutoRefresh}
+            onSetAutoRefreshStatus={this.handleSetAutoRefreshStatus}
             handleChooseTimeRange={this.handleChooseTimeRange}
             handleClickPresentationButton={handleClickPresentationButton}
             toggleVariablesControlBar={onToggleShowVariablesControls}
@@ -226,6 +243,26 @@ class DashboardPage extends Component<Props, State> {
       lower: timeRange.lower,
       upper: timeRange.upper,
     })
+  }
+
+  private handleSetAutoRefreshStatus = (
+    autoRefreshStatus: AutoRefreshStatus
+  ) => {
+    const {
+      onSetAutoRefreshStatus,
+      params: {dashboardID},
+    } = this.props
+
+    onSetAutoRefreshStatus(dashboardID, autoRefreshStatus)
+  }
+
+  private handleChooseAutoRefresh = (autoRefreshInterval: number) => {
+    const {
+      handleChooseAutoRefresh,
+      params: {dashboardID},
+    } = this.props
+
+    handleChooseAutoRefresh(dashboardID, autoRefreshInterval)
   }
 
   private handlePositionChange = async (cells: Cell[]): Promise<void> => {
@@ -301,7 +338,6 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
     links,
     app: {
       ephemeral: {inPresentationMode},
-      persisted: {autoRefresh},
     },
     ranges,
     dashboards,
@@ -311,6 +347,8 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
 
   const timeRange =
     ranges.find(r => r.dashboardID === dashboardID) || DEFAULT_TIME_RANGE
+
+  const autoRefresh = state.autoRefresh[dashboardID] || AUTOREFRESH_DEFAULT
 
   const dashboard = dashboards.list.find(d => d.id === dashboardID)
 
@@ -332,7 +370,8 @@ const mdtp: DispatchProps = {
   copyCell: dashboardActions.copyDashboardCellAsync,
   deleteCell: dashboardActions.deleteCellAsync,
   updateCells: dashboardActions.updateCellsAsync,
-  handleChooseAutoRefresh: appActions.setAutoRefresh,
+  handleChooseAutoRefresh: setAutoRefreshInterval,
+  onSetAutoRefreshStatus: setAutoRefreshStatus,
   handleClickPresentationButton: appActions.delayEnablePresentationMode,
   notify: notifyActions.notify,
   setDashTimeV1: rangesActions.setDashTimeV1,
